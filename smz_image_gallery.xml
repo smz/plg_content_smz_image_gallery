@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="utf-8"?>
+<extension version="3.4" type="plugin" group="content" method="upgrade">
+	<author>Sergio Manzi</author>
+	<authorEmail>info@smz.it</authorEmail>
+	<authorUrl>smz.it</authorUrl>
+	<copyright>Copyright (C) 2013 - 2016 Sergio Manzi. All rights reserved.</copyright>
+	<license>GNU General Public License version 3 or (at your option) any later version.</license>
+	<name>PLG_CONTENT_SMZ_SIG</name>
+	<description>PLG_CONTENT_SMZ_SIG_DESC</description>
+	<version>3.6.0</version>
+	<creationDate>June 2016</creationDate>
+	<files folder="plugin" destination="smz_image_gallery">
+		<filename plugin="smz_image_gallery">smz_image_gallery.php</filename>
+		<folder>language</folder>
+		<folder>tmpl</folder>
+	</files>
+	<media destination="plg_smz_image_gallery" folder="media">
+		<folder>css</folder>
+		<folder>images</folder>
+		<folder>js</folder>
+	</media>
+	<config>
+		<fields name="params">
+			<fieldset name="basic">
+				<field name="layout" type="list" default="classic" label="PLG_SMZ_SIG_LAYOUT" description="PLG_SMZ_SIG_LAYOUT_DESC">
+					<option value="classic">Classic</option>
+					<option value="slides">Slides</option>
+					<option value="simple">Simple</option>
+				</field>
+				<field name="thb_width" type="text" default="220" label="PLG_SMZ_SIG_TW" description="PLG_SMZ_SIG_TW_DESC" />
+				<field name="thb_height" type="text" default="220" label="PLG_SMZ_SIG_TH" description="PLG_SMZ_SIG_TH_DESC" />
+				<field name="gutter" type="text" default="10" label="PLG_SMZ_SIG_GUTTER" description="PLG_SMZ_SIG_GUTTER_DESC" />
+				<field name="display_mode" type="list" default="0" label="PLG_SMZ_SIG_DISPLAY_MODE" description="PLG_SMZ_SIG_DISPLAY_MODE_DESC">
+					<option value="0">PLG_SMZ_SIG_NORMAL</option>
+					<option value="2">PLG_SMZ_SIG_MASONRY</option>
+				</field>
+				<field name="sort_order" type="radio" class="btn-group" default="A" label="PLG_SMZ_SIG_SORT_ORDER" description="PLG_SMZ_SIG_SORT_ORDER_DESC">
+					<option value="A">PLG_SMZ_SIG_ASCENDING</option>
+					<option value="D">PLG_SMZ_SIG_DESCENDING</option>
+				</field>
+				<field name="use_fancybox" type="radio" class="btn-group" default="1" label="PLG_SMZ_SIG_USE_FANCYBOX" description="PLG_SMZ_SIG_USE_FANCYBOX_DESC">
+					<option value="1">JYES</option>
+					<option value="0">JNO</option>
+				</field>
+			</fieldset>
+			<fieldset name="advanced">
+				<field name="galleries_rootfolder" type="text" default="/images" label="PLG_SMZ_SIG_ROOTFOLDER" description="PLG_SMZ_SIG_ROOTFOLDER_DESC" />
+				<field name="load_masonry" type="radio" class="btn-group" default="1" label="PLG_SMZ_SIG_LOAD_MASONRY" description="PLG_SMZ_SIG_LOAD_MASONRY_DESC">
+					<option value="1">JYES</option>
+					<option value="0">JNO</option>
+				</field>
+				<field name="info_file" type="text" default="info.csv" label="PLG_SMZ_SIG_INFOFILE" description="PLG_SMZ_SIG_INFOFILE_DESC" />
+				<field name="title_field" type="text" default="Title" label="PLG_SMZ_SIG_TITLE_FIELD" description="PLG_SMZ_SIG_TITLE_FIELD_DESC" />
+				<field name="sidecar_files_extension" type="text" default=".txt" label="PLG_SMZ_SIG_SIDECAR_FILES_EXT" description="PLG_SMZ_SIG_SIDECAR_FILES_EXT_DESC" />
+				<field name="name_value_separator" type="text" maxlength="1" default=":" label="PLG_SMZ_SIG_NAME_VALUE_SEPARATOR" description="PLG_SMZ_SIG_NAME_VALUE_SEPARATOR_DESC" />
+				<field name="thumbs_only_field_flag" maxlength="1" type="text" default="#" label="PLG_SMZ_SIG_THUMBS_ONLY_FIELD_FLAG" description="PLG_SMZ_SIG_THUMBS_ONLY_FIELD_FLAG_DESC" />
+				<field name="lightbox_only_field_flag" maxlength="1" type="text" default="@" label="PLG_SMZ_SIG_LIGHTBOX_ONLY_FIELD_FLAG" description="PLG_SMZ_SIG_LIGHTBOX_ONLY_FIELD_FLAG_DESC" />
+				<field name="jpg_quality" type="text" default="80" label="PLG_SMZ_SIG_TQ" description="PLG_SMZ_SIG_TQ_DESC" />
+				<field name="fancybox_grouping" type="list" default="data-fancybox-group" label="PLG_SMZ_SIG_FANCYBOX_GROUPING" description="PLG_SMZ_SIG_FANCYBOX_GROUPING_DESC">
+					<option value="data-fancybox-group">PLG_SMZ_SIG_DATAFANCYBOXGROUP</option>
+					<option value="rel">PLG_SMZ_SIG_REL</option>
+				</field>
+				<field name="memoryLimit" type="text" default="0" label="PLG_SMZ_SIG_ML" description="PLG_SMZ_SIG_ML_DESC" />
+				<field name="cache_time" type="text" default="0" label="PLG_SMZ_SIG_CACHE_TIME" description="PLG_SMZ_SIG_CACHE_TIME_DESC" />
+				<field name="suppress_errors" type="list" class="btn-group" default="0" label="PLG_SMZ_SIG_SUPPRESS_ERRORS" description="PLG_SMZ_SIG_SUPPRESS_ERRORS_DESC">
+					<option value="0">PLG_SMZ_SIG_NONE</option>
+					<option value="1">PLG_SMZ_SIG_FOLDER_ERROR</option>
+					<option value="2">PLG_SMZ_SIG_MOST_ERRORS</option>
+				</field>
+			</fieldset>
+		</fields>
+	</config>
+</extension>

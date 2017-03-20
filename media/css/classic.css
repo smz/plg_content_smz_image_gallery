@@ -1,0 +1,29 @@
+/**
+ * @package		SMZ Image Gallery (plugin)
+ * @author		Sergio Manzi - http://smz.it
+ * @copyright	Copyright (c) 2013 - 2015 Sergio Manzi. All rights reserved.
+ * @license		GNU General Public License version 3 or (at your option) any later version.
+ * @version		3.5.0
+ */
+ 
+div.sigContainer.classic div.sigCell {display:inline-block;vertical-align:top;}
+div.sigContainer.classic div.sigOuterWrapper {float:left;padding:0 5px 5px 0;background:url(../images/shadowAlpha.png) no-repeat right bottom;}
+div.sigContainer.classic div.sigInnerWrapper {margin:-5px 0 0 -5px;padding:4px;border:1px solid #ccc;background-color:#fff;}
+div.sigContainer.classic div.sigImageWrapper {display:table-cell;vertical-align:middle;}
+div.sigContainer.classic a.sigLink {display:block;padding:0;margin:0;border:none;text-decoration:none;}
+div.sigContainer.classic a.sigLink:hover {display:block;padding:0;margin:0;border:none;text-decoration:none;}
+div.sigContainer.classic img.sigImage {display:block;padding:0;border:none;margin: 0 auto;}
+div.sigContainer.classic div.sigInfoWrapper {margin-top:7px;margin-bottom:0;font-size:12px;line-height:12px;}
+div.sigContainer.classic div.sigInfoWrapper span.sigInfo-title {display:block;text-align:center;height:28px;}
+div.sigContainer.classic div.sigInfoWrapper dl {margin-top:10px;margin-bottom:0;}
+div.sigContainer.classic div.sigInfoWrapper dt {line-height:12px;}
+div.sigContainer.classic div.sigInfoWrapper dt:after {padding-left:1px;content:":";}
+div.sigContainer.classic div.sigInfoWrapper dd {line-height:12px;margin-left:5px;padding-bottom:4px;}
+
+/* Print message */
+div.sigPrintMessage {display:none;}
+
+@media print {
+	div.sigContainer.classic {display:none;}
+	div.sigPrintMessage {display:block;padding-bottom:20px;}
+}

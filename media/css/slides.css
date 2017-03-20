@@ -1,0 +1,36 @@
+/**
+ * @package		SMZ Image Gallery (plugin)
+ * @author		Sergio Manzi - http://smz.it
+ * @copyright	Copyright (c) 2013 - 2015 Sergio Manzi. All rights reserved.
+ * @license		GNU General Public License version 3 or (at your option) any later version.
+ * @version		3.5.0
+ */
+ 
+div.sigContainer.slides div.sigCell {display:inline-block;vertical-align:top;border-style:solid;border-width:2px;}
+div.sigContainer.slides div.sigImageWrapper {display:table-cell;vertical-align:middle;}
+div.sigContainer.slides div.sigInnerWrapper1 {padding:8px;border-style:solid;border-width:0 0 1px 0;}
+div.sigContainer.slides div.sigInnerWrapper2 {padding-left:3px;padding-right:3px;border-style:solid;border-width:1px 0 0 0;}
+div.sigContainer.slides a.sigLink {display:block;padding:0;margin:0;text-decoration:none;}
+div.sigContainer.slides a.sigLink:hover {display:block;padding:0;margin:0;text-decoration:none;}
+div.sigContainer.slides img.sigImage {display:block;margin: 0 auto;padding:0;border-style:solid;border-width:1px;}
+div.sigContainer.slides div.sigInfoWrapper {font-size:12px;line-height:12px;padding-top: 3px;}
+div.sigContainer.slides div.sigInfoWrapper span.sigInfo-title {display:block;padding-top:4px;padding-bottom:2px;text-align:center;height:28px;}
+div.sigContainer.slides div.sigInfoWrapper dl {margin-top:0;margin-bottom:0;}
+div.sigContainer.slides div.sigInfoWrapper dt {line-height:12px;}
+div.sigContainer.slides div.sigInfoWrapper dt:after {padding-left:1px;content:":";}
+div.sigContainer.slides div.sigInfoWrapper dd {line-height:12px;margin-left:3px;padding-bottom:4px;}
+
+/* Colors */
+div.sigContainer.slides div.sigCell {background-color:#6a6a6a;border-color:#a1a1a1 #474747 #474747 #a1a1a1;}
+div.sigContainer.slides div.sigInnerWrapper1 {border-color:#727272;}
+div.sigContainer.slides div.sigInnerWrapper2 {background-color:#7c7c7c;border-color:#a1a1a1;}
+div.sigContainer.slides img.sigImage {border-color:#474747 #a1a1a1 #a1a1a1 #474747;}
+div.sigContainer.slides div.sigInfoWrapper span.sigInfo-title {color:#fcfcfc;}
+div.sigContainer.slides div.sigInfoWrapper dl {color:#fcfcfc;}
+/* Print message */
+div.sigPrintMessage {display:none;}
+
+@media print {
+	div.sigContainer.classic {display:none;}
+	div.sigPrintMessage {display:block;padding-bottom:20px;}
+}

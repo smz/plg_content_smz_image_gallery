@@ -887,8 +887,8 @@ class PlgContentSmz_image_gallery extends JPlugin {
 								$value = '';
 							}
 						
-							if (!empty($value))
-							{
+//							if (!empty($value))   // 3.6.1 mod.: allow empty values so that default title from filename can be overridden with an empty string.
+//							{
 								if ($tag == $this->options->title_field)
 								{
 									$image->title = htmlentities($value, ENT_QUOTES);
@@ -916,7 +916,7 @@ class PlgContentSmz_image_gallery extends JPlugin {
 									$image->info->$attribute->tag = htmlentities($tag, ENT_QUOTES);
 									$image->info->$attribute->value = htmlentities($value, ENT_QUOTES);
 								}
-							}
+//							}
 						}
 					}
 				}

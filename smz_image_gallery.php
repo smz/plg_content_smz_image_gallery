@@ -92,6 +92,7 @@ class PlgContentSmz_image_gallery extends JPlugin {
 
 
 		// Initialize global options
+		$this->options->autoGallery = $this->params->get('autoGallery', 0);
 		$this->options->galleries_rootfolder = trim($this->params->get('galleries_rootfolder', '/images'), " \t\n\r\0\x0B/.\\");
 		$this->options->autoGalleryFolder = trim($this->params->get('autoGalleryFolder', 'gallery'), " \t\n\r\0\x0B/.\\");
 		$this->options->fancybox_grouping = $this->params->get('fancybox_grouping', 'data-fancybox-group');
@@ -167,7 +168,7 @@ class PlgContentSmz_image_gallery extends JPlugin {
 
 
 	function onContentAfterDisplay($context, &$row, &$params, $page = 0) {
-		if ($context != 'com_content.article' || !$this->plugin_ready)
+		if (!$this->options->autoGallery || $context != 'com_content.article' || !$this->plugin_ready)
 		{
 			return;
 		}
@@ -273,9 +274,6 @@ class PlgContentSmz_image_gallery extends JPlugin {
 				{
 					continue;
 				}
-
-				// Load CSS file
-				JHtml::stylesheet('plg_smz_image_gallery/' . $this->options->layout . '.css', array(), true);
 
 				// Render the gallery
 				$this->buildGallery();
@@ -723,6 +721,9 @@ class PlgContentSmz_image_gallery extends JPlugin {
 
 
 	function renderGallery() {
+		// Load CSS file
+		JHtml::stylesheet('plg_smz_image_gallery/' . $this->options->layout . '.css', array(), true);
+
 		// CSS & JS includes: Append head includes, but not when we're outputing raw content (like in K2)
 		if ($this->app->input->getCmd('format') == '' || $this->app->input->getCmd('format') == 'html')
 		{

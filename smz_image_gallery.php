@@ -47,6 +47,11 @@ class PlgContentSmz_image_gallery extends JPlugin {
 	//		sort=			8: sort_order
 	//		order=			A = ascending
 	//							D = descending
+	//
+	//		gutter=		9:	gutter:
+	//		gt=				the spacing (in pixels) between adjacent cells
+	//		margin=
+	//		mg=
 
 
 	// Class variables
@@ -75,7 +80,7 @@ class PlgContentSmz_image_gallery extends JPlugin {
 					'layout' => array('tp', 'tpl', 'template', 'layout', '6'),
 					'suppress_errors' => array('el', 'errorlevel', '7'),
 					'sort_order' => array('sort', 'order', '8'),
-					'gutter' => array('gutter', 'margin', 'mg')
+					'gutter' => array('gutter', 'gt', 'margin', 'mg', '9')
 					);
 
 	function __construct(&$subject, $params) {
@@ -84,6 +89,27 @@ class PlgContentSmz_image_gallery extends JPlugin {
 
 		// Setup the options object
 		$this->options = new stdClass;
+
+
+		// Initialize global options
+		$this->options->galleries_rootfolder = trim($this->params->get('galleries_rootfolder', '/images'), " \t\n\r\0\x0B/.\\");
+		$this->options->autoGalleryFolder = trim($this->params->get('autoGalleryFolder', 'gallery'), " \t\n\r\0\x0B/.\\");
+		$this->options->fancybox_grouping = $this->params->get('fancybox_grouping', 'data-fancybox-group');
+		$this->options->load_masonry = $this->params->get('load_masonry', 1);
+		$this->options->info_file = trim($this->params->get('info_file', 'titles.txt')," \t\n\r\0\x0B/.\\");
+		$this->options->sidecar_files_extension = '.' . trim($this->params->get('sidecar_files_extension', 'txt')," \t\n\r\0\x0B/.");
+		$this->options->title_field = trim($this->params->get('title_field', 'title'));
+		$this->options->name_value_separator = substr(trim($this->params->get('name_value_separator', ':')), 0, 1);
+		$this->options->thumbs_only_field_flag = substr(trim($this->params->get('thumbs_only_field_flag', '#')), 0, 1);
+		$this->options->lightbox_only_field_flag = substr(trim($this->params->get('lightbox_only_field_flag', '@')), 0, 1);
+		$this->options->cache_time = (int)$this->params->get('cache_time', 0) * 60;
+		$this->options->jpg_quality = (int)$this->params->get('jpg_quality', 80);
+		$this->options->memoryLimit = (int)$this->params->get('memoryLimit', 0);
+
+		if ($this->options->memoryLimit > 0)
+		{
+			ini_set('memory_limit', $this->options->memoryLimit . 'M');
+		}
 
 		// Flip the "syntax" array into the "lexicon" array.
 		foreach ($this->syntax as $command => $aliases)
@@ -140,18 +166,67 @@ class PlgContentSmz_image_gallery extends JPlugin {
 	}
 
 
+	function onContentAfterDisplay($context, &$row, &$params, $page = 0) {
+		if ($context != 'com_content.article' || !$this->plugin_ready)
+		{
+			return;
+		}
+		jimport('joomla.filesystem.folder');
+
+		$document  = JFactory::getDocument();
+
+		// Bail out if the page format is not what we want
+		$allowedFormats = array('', 'html', 'feed', 'json');
+		if (!in_array($this->app->input->getCmd('format', ''), $allowedFormats)) return;
+
+		$app = JFactory::getApplication();
+		$id = ($app->input->getVar('option')==='com_content' && $app->input->getVar('view')==='article')? $app->input->getInt('id') : 0;
+		if ($id > 0)
+		{
+			$article = JTable::getInstance('Content', 'JTable');
+			$article->load($id);
+
+			$db = JFactory::getDbo();
+			$query = $db->getQuery(true)
+					-> select("cat.path")
+					-> from("#__categories AS cat")
+					-> where("cat.id='$article->catid'");
+			$category_path = $db->setQuery($query)->loadResult();
+
+			$galleryFolder =  $category_path . '/' . $article->alias . '/' . $this->options->autoGalleryFolder;
+
+			if (!JFolder::exists(JPATH_SITE . '/' . $this->options->galleries_rootfolder . '/' . $galleryFolder))
+			{
+				return;
+			}
+
+			if (!$this->set_options($galleryFolder))
+			{
+				return;  // should never happen...
+			}
+
+			$this->buildGallery();
+
+			// Nothing in this gallery
+			if (empty($this->gallery))
+			{
+				return;
+			}
+
+			$result = ($this->renderGallery());
+
+			return($result);
+		}
+		return;
+	}
+
 	// onContentPrepare handler
 	function onContentPrepare($context, &$row, &$params, $page = 0) {
 		if (!$this->plugin_ready)
 		{
 			return;
 		}
-		$this->plugin($row, $params, $page = 0);
-	}
 
-
-	// The main function
-	function plugin(&$row, &$params, $page = 0) {
 		jimport('joomla.filesystem.folder');
 
 		$document  = JFactory::getDocument();
@@ -176,35 +251,11 @@ class PlgContentSmz_image_gallery extends JPlugin {
 		if (!$count) return;
 
 
-		// ----------------------------------- Get plugin parameters -----------------------------------
-
-		$this->options->galleries_rootfolder = trim($this->params->get('galleries_rootfolder', '/images'), " \t\n\r\0\x0B/.\\");
-		$this->options->fancybox_grouping = $this->params->get('fancybox_grouping', 'data-fancybox-group');
-
-		$this->options->load_masonry = $this->params->get('load_masonry', 1);
-		$this->options->info_file = trim($this->params->get('info_file', 'titles.txt')," \t\n\r\0\x0B/.\\");
-		$this->options->sidecar_files_extension = '.' . trim($this->params->get('sidecar_files_extension', 'txt')," \t\n\r\0\x0B/.");
-		$this->options->title_field = trim($this->params->get('title_field', 'title'));
-		$this->options->name_value_separator = substr(trim($this->params->get('name_value_separator', ':')), 0, 1);
-		$this->options->thumbs_only_field_flag = substr(trim($this->params->get('thumbs_only_field_flag', '#')), 0, 1);
-		$this->options->lightbox_only_field_flag = substr(trim($this->params->get('lightbox_only_field_flag', '@')), 0, 1);
-		$this->options->cache_time = (int)$this->params->get('cache_time', 0) * 60;
-		$this->options->jpg_quality = (int)$this->params->get('jpg_quality', 80);
-		$this->options->memoryLimit = (int)$this->params->get('memoryLimit', 0);
-
-		if ($this->options->memoryLimit > 0)
-		{
-			ini_set('memory_limit', $this->options->memoryLimit . 'M');
-		}
-
 		// When used with K2 extra fields
 		if (!isset($row->title))
 		{
 			$row->title = '';
 		}
-
-
-		// ----------------------------------- Prepare the output -----------------------------------
 
 		// Process plugin tags
 		if (preg_match_all($regex, $row->text, $matches, PREG_PATTERN_ORDER) > 0)
@@ -227,7 +278,7 @@ class PlgContentSmz_image_gallery extends JPlugin {
 				JHtml::stylesheet('plg_smz_image_gallery/' . $this->options->layout . '.css', array(), true);
 
 				// Render the gallery
-				$this->renderGallery();
+				$this->buildGallery();
 
 				// Nothing in this gallery, silently continue with the next one
 				if (empty($this->gallery))
@@ -235,40 +286,12 @@ class PlgContentSmz_image_gallery extends JPlugin {
 					continue;
 				}
 
-				// CSS & JS includes: Append head includes, but not when we're outputing raw content (like in K2)
-				if ($this->app->input->getCmd('format') == '' || $this->app->input->getCmd('format') == 'html')
-				{
-					// Setup masonry for display_mode 2
-					if ($this->options->load_masonry && $this->options->display_mode == 2)
-					{
-							JHtml::_('jquery.framework');
-							JHtml::script("plg_smz_image_gallery/masonry.{$this->masonry_version}.min.js", false, true, false );
-							$this->options->load_masonry = false; // we want to load it just once
-					}
-				}
-
-				// Here we go...
-				ob_start();
-
-				// Fetch the layout template
-				$template = $this->app->getTemplate();
-				$overridden_layout = JPATH_SITE . "/templates/{$template}/html/{$this->plg_name}/{$this->options->layout}.php";
-				if (file_exists($overridden_layout))
-				{
-					include $overridden_layout;
-				}
-				else
-				{
-					include JPATH_SITE . "/plugins/content/{$this->plg_name}/tmpl/{$this->options->layout}.php";
-				}
-
-				// Output
-				$plg_html = ob_get_contents();
-				ob_end_clean();
+				// Render the gallery 
+				$plg_html = $this->renderGallery();
 
 				// Do the replace
 				$row->text = preg_replace('#{' . $this->plg_tag . '}' . str_replace('\\', '\\\\', $tagcontent) . '{/' . $this->plg_tag . '}#s', $plg_html, $row->text);
-				
+
 				// Unset the gallery
 				unset($this->gallery);
 			}
@@ -291,7 +314,7 @@ class PlgContentSmz_image_gallery extends JPlugin {
 		$this->options->suppress_errors = $this->params->get('suppress_errors', 0);
 		$this->options->sort_order = $this->params->get('sort_order', 'A');
 		$this->options->gutter = (int)trim($this->params->get('gutter', 10));
-		
+
 		$this->options->lightbox = '';
 		$this->options->fancybox_group = '';
 
@@ -323,7 +346,7 @@ class PlgContentSmz_image_gallery extends JPlugin {
 		if (!isset($this->options->galleryFolder))
 		{
 			$this->options->galleryFolder = '';
-			$this->app->enqueueMessage(JText::sprintf('PLG_SMZ_SIG_ERR_NO_GALLERY_FOLDER',$tagcontent), 'error');
+			$this->app->enqueueMessage(JText::sprintf('PLG_SMZ_SIG_ERR_NO_GALLERY_FOLDER', $tagcontent), 'error');
 			$errors = true;
 		}
 
@@ -513,7 +536,7 @@ class PlgContentSmz_image_gallery extends JPlugin {
 
 		$values = explode(':', $options_string);			// The old way...
 
-		for ($i=0; $i<9; $i++)									// We had 8 options with the old syntax and we will not expand it...
+		for ($i=0; $i<10; $i++)
 		{
 			if (isset($values[$i]) && !empty($values[$i]))
 			{
@@ -534,7 +557,7 @@ class PlgContentSmz_image_gallery extends JPlugin {
 
 
 	// Render the gallery
-	function renderGallery() {
+	function buildGallery() {
 		jimport('joomla.filesystem.folder');
 
 		// Path assignment
@@ -699,6 +722,39 @@ class PlgContentSmz_image_gallery extends JPlugin {
 	}
 
 
+	function renderGallery() {
+		// CSS & JS includes: Append head includes, but not when we're outputing raw content (like in K2)
+		if ($this->app->input->getCmd('format') == '' || $this->app->input->getCmd('format') == 'html')
+		{
+			// Setup masonry if required
+			if ($this->options->load_masonry && $this->options->display_mode == 2)
+			{
+				JHtml::_('jquery.framework');
+				JHtml::script("plg_smz_image_gallery/masonry.{$this->masonry_version}.min.js", false, true, false );
+				$this->options->load_masonry = false; // we want to load it just once
+			}
+		}
+
+		// Get the layout template
+		$template = $this->app->getTemplate();
+		$overridden_layout = JPATH_SITE . "/templates/{$template}/html/{$this->plg_name}/{$this->options->layout}.php";
+		if (file_exists($overridden_layout))
+		{
+			$layout = $overridden_layout;
+		}
+		else
+		{
+			$layout = JPATH_SITE . "/plugins/content/{$this->plg_name}/tmpl/{$this->options->layout}.php";
+		}
+
+		// Here we go...
+		ob_start();
+		include $layout;
+
+		return(ob_get_clean());
+	}
+
+
 	/* ------------------ Helper Functions ------------------ */
 
 
@@ -859,7 +915,7 @@ class PlgContentSmz_image_gallery extends JPlugin {
 
 				// And trim the tag names
 				$heading = array_map('trim', $heading);
-				
+
 				// Read the rest of the csv and build the $info array
 				while (is_array($temp = fgetcsv($handle)))
 				{
@@ -886,7 +942,7 @@ class PlgContentSmz_image_gallery extends JPlugin {
 							{
 								$value = '';
 							}
-						
+
 //							if (!empty($value))   // 3.6.1 mod.: allow empty values so that default title from filename can be overridden with an empty string.
 //							{
 								if ($tag == $this->options->title_field)

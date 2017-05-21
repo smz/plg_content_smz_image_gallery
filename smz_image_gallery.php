@@ -23,10 +23,10 @@ class PlgContentSmz_image_gallery extends JPlugin {
 	//							Thumbnails height (in pixels)
 	//
 	//		dm=			3: display_mode:
-	//		display=		0,1 = normal display mode,
-	//		masonry=		2 = use Masonry Javascript to rearrange images
+	//		display=		0, 1 = normal display mode,
+	//						2 = use Masonry Javascript to rearrange images
 	//
-	//		n.a.				4: caption_mode:
+	//		n.a.			4: caption_mode:
 	//							ignored
 	//
 	//		fb=			5: popup_engine (lightbox):
@@ -74,7 +74,7 @@ class PlgContentSmz_image_gallery extends JPlugin {
 					'galleryFolder' => array('src', '0'),
 					'thb_width' => array('tw', '1'),
 					'thb_height' => array('th', '2'),
-					'display_mode' => array('dm', 'display', 'masonry', '3'),
+					'display_mode' => array('dm', 'display', '3'),
 					'caption_mode' => array('4'), // Unused ATM...
 					'use_fancybox' => array('fb', 'fancybox', 'lightbox', '5'),
 					'layout' => array('tp', 'tpl', 'template', 'layout', '6'),
@@ -107,6 +107,7 @@ class PlgContentSmz_image_gallery extends JPlugin {
 		$this->options->cache_time = (int)$this->params->get('cache_time', 0) * 60;
 		$this->options->jpg_quality = (int)$this->params->get('jpg_quality', 80);
 		$this->options->memoryLimit = (int)$this->params->get('memoryLimit', 0);
+		$this->options->recurse = false;
 
 		if ($this->options->memoryLimit > 0)
 		{
@@ -189,8 +190,10 @@ class PlgContentSmz_image_gallery extends JPlugin {
 				-> where("cat.id='$row->catid'");
 		$category_path = $db->setQuery($query)->loadResult();
 
+		// Build the folder path from the category path + article alias + sub-folder
 		$this->options->galleryFolder =  $category_path . '/' . $row->alias . '/' . $this->options->autoGalleryFolder;
 
+		// We MUST return here if the folder does not exist or we would get an error from setOptions()!
 		if (!JFolder::exists(JPATH_SITE . '/' . $this->options->galleries_rootfolder . '/' . $this->options->galleryFolder))
 		{
 			return;
@@ -198,7 +201,7 @@ class PlgContentSmz_image_gallery extends JPlugin {
 
 		$this->buildGallery('');
 
-		// Nothing in this gallery
+		// Nothing in this gallery, just return
 		if (empty($this->gallery))
 		{
 			return;
@@ -302,36 +305,57 @@ class PlgContentSmz_image_gallery extends JPlugin {
 		$this->masonry_options = '';
 
 		// We are optimists
-		$errors = false;
+		$ok = true;
+
+		$tagcontent = trim($tagcontent);
 
 		// Get parameters from the plugin tag string
 		if (!empty($tagcontent))
 		{
 			if (strpos($tagcontent,'=') === false && strpos($tagcontent,':') === false )
-				{
-					// No parameters, just the gallery folder.
-					$this->options->galleryFolder = trim($tagcontent);
-				}
+			{
+				// No parameters, just the gallery folder.
+				$this->options->galleryFolder = $tagcontent;
+			}
 			elseif (strpos($tagcontent,'=') !== false)  // New style (param=value)
-				{
-					$this->parseOptions($tagcontent, $this->lexicon);
-				}
+			{
+				$this->parseOptions($tagcontent, $this->lexicon);
+			}
 			else	// Old style (param0:param1:param2:...)
-				{
-					$this->parseOldOptions($tagcontent, $this->lexicon);
-				}
+			{
+				$this->parseOldOptions($tagcontent, $this->lexicon);
+			}
 		}
 
 
-		// Check options values
+		// Check/fix options values
 
 		// galleryFolder
 		if (!isset($this->options->galleryFolder))
 		{
 			$this->options->galleryFolder = '';
-			$this->app->enqueueMessage(JText::sprintf('PLG_SMZ_SIG_ERR_NO_GALLERY_FOLDER', $tagcontent), 'error');
-			$errors = true;
 		}
+
+		$this->options->galleryFolder = trim($this->options->galleryFolder, " \t\n\r\0\x0B/.\\");
+		if ($this->options->galleryFolder == '')
+		{
+			$this->app->enqueueMessage(JText::sprintf('PLG_SMZ_SIG_ERR_NO_GALLERY_FOLDER', $tagcontent), 'error');
+			return false;
+		}
+
+		$this->options->galleryFolder = $this->options->galleries_rootfolder . '/' . $this->options->galleryFolder;
+		if (!JFolder::exists(JPATH_SITE . '/' . $this->options->galleryFolder))
+		{
+			if ($this->options->suppress_errors < 1)
+			{
+				$this->app->enqueueMessage(JText::sprintf('PLG_SMZ_SIG_ERR_GALLERY_FOLDER', $this->options->galleryFolder), 'error');
+			}
+			$ok = false;
+		}
+
+		// Set the gallery ID from the source folder hash
+		$this->gallery_id = substr(md5($this->options->galleryFolder), 0, $this->hash_length);
+
 
 		// thb_width
 		$this->options->thb_width = (int)$this->options->thb_width;
@@ -340,21 +364,25 @@ class PlgContentSmz_image_gallery extends JPlugin {
 		$this->options->thb_height = (int)$this->options->thb_height;
 
 		// display_mode
-		$this->options->display_mode = (int)$this->options->display_mode;
 		switch ($this->options->display_mode)
 		{
-			case 0:
-			case 1:
+			case '0':
+			case '1':
+			case 'normal':
+				$this->options->display_mode = 0;
 				$this->options->margin_right = $this->options->gutter;
 				$this->options->margin_bottom = $this->options->gutter;
 				break;
-			case 2:
+			case '2':
+			case 'masonry':
+				$this->options->display_mode = 2;
 				$this->options->margin_right = 0;
 				$this->options->margin_bottom = $this->options->gutter;
+				$this->masonry_options = " data-masonry='{\"itemSelector\":\".sigCell\", \"gutter\":{$this->options->gutter}}'";
 				break;
 			default:
-				$this->app->enqueueMessage(JText::sprintf('PLG_SMZ_SIG_ERR_DISPLAY_MODE', $tmp), 'error');
-				$errors = true;
+				$this->app->enqueueMessage(JText::sprintf('PLG_SMZ_SIG_ERR_DISPLAY_MODE', $this->options->display_mode), 'error');
+				$ok = false;
 		}
 
 		// use_fancybox
@@ -364,20 +392,21 @@ class PlgContentSmz_image_gallery extends JPlugin {
 			case '1';
 			case 'yes';
 			case 'true';
-				$this->options->use_fancybox = true;
+				$this->options->fancybox_group = 'sig-' . $this->gallery_id;
 				$this->options->lightbox = ' fancybox';
+				$this->options->use_fancybox = true;
 				break;
 			case 'none':
 			case '0':
 			case 'no';
 			case 'false';
-				$this->options->use_fancybox = false;
 				$this->options->lightbox = '';
+				$this->options->use_fancybox = false;
 				break;
 			default:
-				$this->options->fancybox_group = $this->options->use_fancybox;
-				$this->options->use_fancybox = true;
+				$this->options->fancybox_group = htmlspecialchars($this->options->use_fancybox, ENT_QUOTES | ENT_HTML5);
 				$this->options->lightbox = ' fancybox';
+				$this->options->use_fancybox = true;
 		}
 
 		// layout
@@ -385,24 +414,30 @@ class PlgContentSmz_image_gallery extends JPlugin {
 		{
 			case 'classic':
 			case 'slides':
+				break;
 			case 'simple':
+				if ($this->options->display_mode == 2)
+				{
+					$this->app->enqueueMessage(JText::_('PLG_SMZ_SIG_ERR_SIMPLE_AND_MASONRY'), 'error');
+					$ok = false;
+				}
 				break;
 			default:
-				$this->app->enqueueMessage(JText::sprintf('PLG_SMZ_SIG_ERR_LAYOUT', $tmp), 'error');
-				$errors = true;
+				$this->app->enqueueMessage(JText::sprintf('PLG_SMZ_SIG_ERR_LAYOUT', $this->options->layout), 'error');
+
 		}
 
 		// suppress_errors
-		$this->options->suppress_errors = (int)$this->options->suppress_errors;
 		switch ($this->options->suppress_errors)
 		{
-			case 0:
-			case 1:
-			case 2:
+			case '0':
+			case '1':
+			case '2':
+				$this->options->suppress_errors = (int) $this->options->suppress_errors;
 				break;
 			default:
-				$this->app->enqueueMessage(JText::sprintf('PLG_SMZ_SIG_ERR_SUPPRESS_ERRORS', $tmp), 'error');
-				$errors = true;
+				$this->app->enqueueMessage(JText::sprintf('PLG_SMZ_SIG_ERR_SUPPRESS_ERRORS', $this->options->suppress_errors), 'error');
+				$ok = false;
 		}
 
 		// sort_order
@@ -416,51 +451,14 @@ class PlgContentSmz_image_gallery extends JPlugin {
 				$this->options->sort_order = strtoupper($this->options->sort_order);
 				break;
 			default:
-				$this->app->enqueueMessage(JText::sprintf('PLG_SMZ_SIG_ERR_SORT_ORDER', $tmp), 'error');
-				$errors = true;
+				$this->app->enqueueMessage(JText::sprintf('PLG_SMZ_SIG_ERR_SORT_ORDER', $this->options->sort_order), 'error');
+				$ok = false;
 		}
 
-		// If there were errors in the options, we can skip this
-		if (!$errors)
-		{
-			// Get gallery folder
-			$this->options->galleryFolder = trim($this->options->galleryFolder, " \t\n\r\0\x0B/.\\");
-			$this->options->galleryFolder = $this->options->galleries_rootfolder . '/' . $this->options->galleryFolder;
+		// Message to show when printing an article/item with a gallery
+		$this->pageURL = JUri::GetInstance()->toString();
 
-			// If the source folder does not exists continue with the next gallery
-			if (!JFolder::exists(JPATH_SITE . '/' . $this->options->galleryFolder))
-			{
-				if ($this->options->suppress_errors < 1)
-				{
-					$this->app->enqueueMessage(JText::sprintf('PLG_SMZ_SIG_ERR_GALLERY_FOLDER', $this->options->galleryFolder), 'error');
-				}
-				$errors = true;
-			}
-
-			// Set the gallery ID from the source folder hash
-			$this->gallery_id = substr(md5($this->options->galleryFolder), 0, $this->hash_length);
-
-			// Set the Fancybox group if not already set
-			if ($this->options->fancybox_group == '')
-			{
-				$this->options->fancybox_group = 'sig-' . $this->gallery_id;
-			}
-
-			// Something we don't want when we're outputing raw content (like in K2)
-			if ($this->app->input->getCmd('format') == '' || $this->app->input->getCmd('format') == 'html')
-			{
-				// Message to show when printing an article/item with a gallery
-				$this->pageURL = JUri::GetInstance()->toString();
-
-				// Setup masonry for display_mode 2
-				if ($this->options->display_mode == 2)
-				{
-					$this->masonry_options = " data-masonry='{\"itemSelector\":\".sigCell\", \"gutter\":{$this->options->gutter}}'";
-				}
-			}
-		}
-
-		return (boolean)!$errors;
+		return $ok;
 	}
 
 
@@ -555,7 +553,7 @@ class PlgContentSmz_image_gallery extends JPlugin {
 		// Path assignment
 		$sitePath = JPATH_SITE . '/';
 
-		$srcFolder = JFolder::files($sitePath . $this->options->galleryFolder, '.', true, true);
+		$srcFolder = JFolder::files($sitePath . $this->options->galleryFolder, '.', $this->options->recurse, true);
 
 		// Proceed if the folder is OK or fail silently
 		if (!$srcFolder) return;

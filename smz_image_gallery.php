@@ -196,9 +196,7 @@ class PlgContentSmz_image_gallery extends JPlugin {
 			return;
 		}
 
-		$this->setOptions('');
-
-		$this->buildGallery();
+		$this->buildGallery('');
 
 		// Nothing in this gallery
 		if (empty($this->gallery))
@@ -258,14 +256,8 @@ class PlgContentSmz_image_gallery extends JPlugin {
 				// Get the plugin tag string
 				$tagcontent = preg_replace('/{.+?}/', '', $match);
 
-				// Get options from the plugin tag. If there are errors, skip this gallery
-				if (!$this->setOptions($tagcontent))
-				{
-					continue;
-				}
-
 				// Render the gallery
-				$this->buildGallery();
+				$this->buildGallery($tagcontent);
 
 				// Nothing in this gallery, silently continue with the next one
 				if (empty($this->gallery))
@@ -333,7 +325,7 @@ class PlgContentSmz_image_gallery extends JPlugin {
 
 		// Check options values
 
-		// $this->options->galleryFolder
+		// galleryFolder
 		if (!isset($this->options->galleryFolder))
 		{
 			$this->options->galleryFolder = '';
@@ -341,13 +333,13 @@ class PlgContentSmz_image_gallery extends JPlugin {
 			$errors = true;
 		}
 
-		// $this->options->thb_width
+		// thb_width
 		$this->options->thb_width = (int)$this->options->thb_width;
 
-		// $thb_heigth
+		// thb_heigth
 		$this->options->thb_height = (int)$this->options->thb_height;
 
-		// $this->options->display_mode
+		// display_mode
 		$this->options->display_mode = (int)$this->options->display_mode;
 		switch ($this->options->display_mode)
 		{
@@ -365,7 +357,7 @@ class PlgContentSmz_image_gallery extends JPlugin {
 				$errors = true;
 		}
 
-		// $this->options->use_fancybox
+		// use_fancybox
 		switch ($this->options->use_fancybox)
 		{
 			case 'jquery_fancybox':
@@ -388,7 +380,7 @@ class PlgContentSmz_image_gallery extends JPlugin {
 				$this->options->lightbox = ' fancybox';
 		}
 
-		// $this->options->layout
+		// layout
 		switch ($this->options->layout)
 		{
 			case 'classic':
@@ -400,7 +392,7 @@ class PlgContentSmz_image_gallery extends JPlugin {
 				$errors = true;
 		}
 
-		// $this->options->suppress_errors
+		// suppress_errors
 		$this->options->suppress_errors = (int)$this->options->suppress_errors;
 		switch ($this->options->suppress_errors)
 		{
@@ -413,7 +405,7 @@ class PlgContentSmz_image_gallery extends JPlugin {
 				$errors = true;
 		}
 
-		// $this->options->sort_order
+		// sort_order
 		switch ($this->options->sort_order)
 		{
 			case 'A':
@@ -550,8 +542,14 @@ class PlgContentSmz_image_gallery extends JPlugin {
 
 
 	// Render the gallery
-	function buildGallery()
+	function buildGallery($tagcontent)
 	{
+		// get/set/fix options for current gallery. Just return if there were errors
+		if (!$this->setOptions($tagcontent))
+		{
+			return;
+		}
+
 		jimport('joomla.filesystem.folder');
 
 		// Path assignment
@@ -592,7 +590,6 @@ class PlgContentSmz_image_gallery extends JPlugin {
 		// Loop through the image file list
 		foreach ($found as $key => $filename)
 		{
-
 			// Object to hold each image elements
 			$this->gallery[$key] = (object) array();
 
@@ -630,7 +627,7 @@ class PlgContentSmz_image_gallery extends JPlugin {
 				list($original_width, $original_height, $type) = getimagesize($original);
 
 				// calculate thumbnail size
-				$thumb_size = $this->thumbDimCalc($original_width, $original_height, $this->options->thb_width, $this->options->thb_height);
+				$thumb_size = $this->getThumbsSize($original_width, $original_height, $this->options->thb_width, $this->options->thb_height);
 				$thumb_width = $thumb_size['width'];
 				$thumb_height = $thumb_size['height'];
 
@@ -757,7 +754,7 @@ class PlgContentSmz_image_gallery extends JPlugin {
 
 
 	// Calculate thumbnail dimensions
-	function thumbDimCalc($original_width, $original_height, $container_width, $container_height)
+	function getThumbsSize($original_width, $original_height, $container_width, $container_height)
 	{
 		$original_ratio = $original_width / $original_height;
 		$container_ratio = $container_width / $container_height;
@@ -778,7 +775,7 @@ class PlgContentSmz_image_gallery extends JPlugin {
 
 
 	// Read a "clean" line from file
-	function readline($handle, $trim=false, $strip_tags=false)
+	function readLine($handle, $trim=false, $strip_tags=false)
 	{
 		$ln = false;
 
@@ -840,7 +837,7 @@ class PlgContentSmz_image_gallery extends JPlugin {
 
 		if ($handle)
 		{
-			while (($ln = $this->readline($handle, true, true)) !== false)
+			while (($ln = $this->readLine($handle, true, true)) !== false)
 			{
 				// Parse the "tag:value" pair
 				$tag = trim(mb_substr($ln, 0, mb_strpos($ln, $this->options->name_value_separator)));

@@ -83,7 +83,8 @@ class PlgContentSmz_image_gallery extends JPlugin {
 					'gutter' => array('gutter', 'gt', 'margin', 'mg', '9')
 					);
 
-	function __construct(&$subject, $params) {
+	function __construct(&$subject, $params)
+	{
 		// Setup parent class
 		parent::__construct($subject, $params);
 
@@ -167,59 +168,53 @@ class PlgContentSmz_image_gallery extends JPlugin {
 	}
 
 
-	function onContentAfterDisplay($context, &$row, &$params, $page = 0) {
-		if (!$this->options->autoGallery || $context != 'com_content.article' || !$this->plugin_ready)
+	function onContentAfterDisplay($context, &$row, &$params, $page = 0)
+	{
+		// Just return if the autGallery option is not set or the page is not what we want
+		if (!$this->options->autoGallery ||
+			!$this->plugin_ready ||
+			$context != 'com_content.article' ||
+			!in_array($this->app->input->getCmd('format', ''), array('', 'html', 'feed', 'json')) ||
+			!$row->id > 0)
 		{
 			return;
 		}
 
 		jimport('joomla.filesystem.folder');
 
-		// Bail out if the page format is not what we want
-		$allowedFormats = array('', 'html', 'feed', 'json');
-		if (!in_array($this->app->input->getCmd('format', ''), $allowedFormats))
+		$db = JFactory::getDbo();
+		$query = $db->getQuery(true)
+				-> select("cat.path")
+				-> from("#__categories AS cat")
+				-> where("cat.id='$row->catid'");
+		$category_path = $db->setQuery($query)->loadResult();
+
+		$galleryFolder =  $category_path . '/' . $row->alias . '/' . $this->options->autoGalleryFolder;
+
+		if (!JFolder::exists(JPATH_SITE . '/' . $this->options->galleries_rootfolder . '/' . $galleryFolder))
 		{
 			return;
 		}
 
-		if ($row->id > 0)
+		if (!$this->set_options($galleryFolder))
 		{
-			$db = JFactory::getDbo();
-			$query = $db->getQuery(true)
-					-> select("cat.path")
-					-> from("#__categories AS cat")
-					-> where("cat.id='$row->catid'");
-			$category_path = $db->setQuery($query)->loadResult();
-
-			$galleryFolder =  $category_path . '/' . $row->alias . '/' . $this->options->autoGalleryFolder;
-
-			if (!JFolder::exists(JPATH_SITE . '/' . $this->options->galleries_rootfolder . '/' . $galleryFolder))
-			{
-				return;
-			}
-
-			if (!$this->set_options($galleryFolder))
-			{
-				return;  // should never happen...
-			}
-
-			$this->buildGallery();
-
-			// Nothing in this gallery
-			if (empty($this->gallery))
-			{
-				return;
-			}
-
-			$result = ($this->renderGallery());
-
-			return($result);
+			return;  // should never happen...
 		}
-		return;
+
+		$this->buildGallery();
+
+		// Nothing in this gallery
+		if (empty($this->gallery))
+		{
+			return;
+		}
+
+		return($this->renderGallery());
 	}
 
 	// onContentPrepare handler
-	function onContentPrepare($context, &$row, &$params, $page = 0) {
+	function onContentPrepare($context, &$row, &$params, $page = 0)
+	{
 		if (!$this->plugin_ready)
 		{
 			return;
@@ -281,7 +276,7 @@ class PlgContentSmz_image_gallery extends JPlugin {
 					continue;
 				}
 
-				// Render the gallery 
+				// Render the gallery
 				$plg_html = $this->renderGallery();
 
 				// Do the replace
@@ -297,7 +292,8 @@ class PlgContentSmz_image_gallery extends JPlugin {
 	/* ------------------ Options Parsing Functions ------------------ */
 
 
-	function set_options($tagcontent) {
+	function set_options($tagcontent)
+	{
 
 		// Initialize overridable options with plugin default values
 		$this->options->thb_width = (int)$this->params->get('thb_width', 220);
@@ -477,7 +473,8 @@ class PlgContentSmz_image_gallery extends JPlugin {
 
 
 	// Parse "command line" options (New style)
-	function parseOptions($options_string) {
+	function parseOptions($options_string)
+	{
 		$out = array();
 
 		$options = explode(',', $options_string);			// Explodes options string into an array of "param=value" strings
@@ -526,7 +523,8 @@ class PlgContentSmz_image_gallery extends JPlugin {
 
 
 	// Parse "command line" options (Old style)
-	function parseOldOptions($options_string) {
+	function parseOldOptions($options_string)
+	{
 		$out = array();
 
 		$values = explode(':', $options_string);			// The old way...
@@ -552,7 +550,8 @@ class PlgContentSmz_image_gallery extends JPlugin {
 
 
 	// Render the gallery
-	function buildGallery() {
+	function buildGallery()
+	{
 		jimport('joomla.filesystem.folder');
 
 		// Path assignment
@@ -717,7 +716,8 @@ class PlgContentSmz_image_gallery extends JPlugin {
 	}
 
 
-	function renderGallery() {
+	function renderGallery()
+	{
 		// Load CSS file
 		JHtml::stylesheet('plg_smz_image_gallery/' . $this->options->layout . '.css', array(), true);
 
@@ -757,7 +757,8 @@ class PlgContentSmz_image_gallery extends JPlugin {
 
 
 	// Calculate thumbnail dimensions
-	function thumbDimCalc($original_width, $original_height, $container_width, $container_height) {
+	function thumbDimCalc($original_width, $original_height, $container_width, $container_height)
+	{
 		$original_ratio = $original_width / $original_height;
 		$container_ratio = $container_width / $container_height;
 
@@ -777,7 +778,8 @@ class PlgContentSmz_image_gallery extends JPlugin {
 
 
 	// Read a "clean" line from file
-	function readline($handle, $trim=false, $strip_tags=false) {
+	function readline($handle, $trim=false, $strip_tags=false)
+	{
 		$ln = false;
 
 		if ($handle)
@@ -941,36 +943,33 @@ class PlgContentSmz_image_gallery extends JPlugin {
 								$value = '';
 							}
 
-//							if (!empty($value))   // 3.6.1 mod.: allow empty values so that default title from filename can be overridden with an empty string.
-//							{
-								if ($tag == $this->options->title_field)
+							if ($tag == $this->options->title_field)
+							{
+								$image->title = htmlentities($value, ENT_QUOTES);
+							}
+							else
+							{
+								$attribute = 'sigInfo-' . substr(md5($tag), 0, $this->hash_length);
+								$image->info->$attribute = new stdClass();
+								switch (mb_substr($tag, 0, 1))
 								{
-									$image->title = htmlentities($value, ENT_QUOTES);
+									case $this->options->lightbox_only_field_flag:
+										$image->info->$attribute->for_thumbs = false;
+										$image->info->$attribute->for_lightbox = true;
+										$tag = mb_substr($tag, 1);
+										break;
+									case $this->options->thumbs_only_field_flag:
+										$image->info->$attribute->for_thumbs = true;
+										$image->info->$attribute->for_lightbox = false;
+										$tag = mb_substr($tag, 1);
+										break;
+									default:
+										$image->info->$attribute->for_thumbs = true;
+										$image->info->$attribute->for_lightbox = true;
 								}
-								else
-								{
-									$attribute = 'sigInfo-' . substr(md5($tag), 0, $this->hash_length);
-									$image->info->$attribute = new stdClass();
-									switch (mb_substr($tag, 0, 1))
-									{
-										case $this->options->lightbox_only_field_flag:
-											$image->info->$attribute->for_thumbs = false;
-											$image->info->$attribute->for_lightbox = true;
-											$tag = mb_substr($tag, 1);
-											break;
-										case $this->options->thumbs_only_field_flag:
-											$image->info->$attribute->for_thumbs = true;
-											$image->info->$attribute->for_lightbox = false;
-											$tag = mb_substr($tag, 1);
-											break;
-										default:
-											$image->info->$attribute->for_thumbs = true;
-											$image->info->$attribute->for_lightbox = true;
-									}
-									$image->info->$attribute->tag = htmlentities($tag, ENT_QUOTES);
-									$image->info->$attribute->value = htmlentities($value, ENT_QUOTES);
-								}
-//							}
+								$image->info->$attribute->tag = htmlentities($tag, ENT_QUOTES);
+								$image->info->$attribute->value = htmlentities($value, ENT_QUOTES);
+							}
 						}
 					}
 				}

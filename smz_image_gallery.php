@@ -172,29 +172,26 @@ class PlgContentSmz_image_gallery extends JPlugin {
 		{
 			return;
 		}
-		jimport('joomla.filesystem.folder');
 
-		$document  = JFactory::getDocument();
+		jimport('joomla.filesystem.folder');
 
 		// Bail out if the page format is not what we want
 		$allowedFormats = array('', 'html', 'feed', 'json');
-		if (!in_array($this->app->input->getCmd('format', ''), $allowedFormats)) return;
-
-		$app = JFactory::getApplication();
-		$id = ($app->input->getVar('option')==='com_content' && $app->input->getVar('view')==='article')? $app->input->getInt('id') : 0;
-		if ($id > 0)
+		if (!in_array($this->app->input->getCmd('format', ''), $allowedFormats))
 		{
-			$article = JTable::getInstance('Content', 'JTable');
-			$article->load($id);
+			return;
+		}
 
+		if ($row->id > 0)
+		{
 			$db = JFactory::getDbo();
 			$query = $db->getQuery(true)
 					-> select("cat.path")
 					-> from("#__categories AS cat")
-					-> where("cat.id='$article->catid'");
+					-> where("cat.id='$row->catid'");
 			$category_path = $db->setQuery($query)->loadResult();
 
-			$galleryFolder =  $category_path . '/' . $article->alias . '/' . $this->options->autoGalleryFolder;
+			$galleryFolder =  $category_path . '/' . $row->alias . '/' . $this->options->autoGalleryFolder;
 
 			if (!JFolder::exists(JPATH_SITE . '/' . $this->options->galleries_rootfolder . '/' . $galleryFolder))
 			{

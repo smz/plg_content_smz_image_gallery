@@ -189,17 +189,14 @@ class PlgContentSmz_image_gallery extends JPlugin {
 				-> where("cat.id='$row->catid'");
 		$category_path = $db->setQuery($query)->loadResult();
 
-		$galleryFolder =  $category_path . '/' . $row->alias . '/' . $this->options->autoGalleryFolder;
+		$this->options->galleryFolder =  $category_path . '/' . $row->alias . '/' . $this->options->autoGalleryFolder;
 
-		if (!JFolder::exists(JPATH_SITE . '/' . $this->options->galleries_rootfolder . '/' . $galleryFolder))
+		if (!JFolder::exists(JPATH_SITE . '/' . $this->options->galleries_rootfolder . '/' . $this->options->galleryFolder))
 		{
 			return;
 		}
 
-		if (!$this->set_options($galleryFolder))
-		{
-			return;  // should never happen...
-		}
+		$this->setOptions('');
 
 		$this->buildGallery();
 
@@ -209,7 +206,7 @@ class PlgContentSmz_image_gallery extends JPlugin {
 			return;
 		}
 
-		return($this->renderGallery());
+		return $this->renderGallery();
 	}
 
 	// onContentPrepare handler
@@ -262,7 +259,7 @@ class PlgContentSmz_image_gallery extends JPlugin {
 				$tagcontent = preg_replace('/{.+?}/', '', $match);
 
 				// Get options from the plugin tag. If there are errors, skip this gallery
-				if (!$this->set_options($tagcontent))
+				if (!$this->setOptions($tagcontent))
 				{
 					continue;
 				}
@@ -292,7 +289,7 @@ class PlgContentSmz_image_gallery extends JPlugin {
 	/* ------------------ Options Parsing Functions ------------------ */
 
 
-	function set_options($tagcontent)
+	function setOptions($tagcontent)
 	{
 
 		// Initialize overridable options with plugin default values
@@ -316,19 +313,22 @@ class PlgContentSmz_image_gallery extends JPlugin {
 		$errors = false;
 
 		// Get parameters from the plugin tag string
-		if (strpos($tagcontent,'=') === false && strpos($tagcontent,':') === false )
-			{
-				// No parameters, just the gallery folder.
-				$this->options->galleryFolder = trim($tagcontent);
-			}
-		elseif (strpos($tagcontent,'=') !== false)  // New style (param=value)
-			{
-				$this->parseOptions($tagcontent, $this->lexicon);
-			}
-		else	// Old style (param0:param1:param2:...)
-			{
-				$this->parseOldOptions($tagcontent, $this->lexicon);
-			}
+		if (!empty($tagcontent))
+		{
+			if (strpos($tagcontent,'=') === false && strpos($tagcontent,':') === false )
+				{
+					// No parameters, just the gallery folder.
+					$this->options->galleryFolder = trim($tagcontent);
+				}
+			elseif (strpos($tagcontent,'=') !== false)  // New style (param=value)
+				{
+					$this->parseOptions($tagcontent, $this->lexicon);
+				}
+			else	// Old style (param0:param1:param2:...)
+				{
+					$this->parseOldOptions($tagcontent, $this->lexicon);
+				}
+		}
 
 
 		// Check options values
@@ -518,7 +518,7 @@ class PlgContentSmz_image_gallery extends JPlugin {
 //			}
 		}
 
-		return ($out);
+		return $out;
 	}
 
 
@@ -542,7 +542,7 @@ class PlgContentSmz_image_gallery extends JPlugin {
 //			}
 		}
 
-		return ($out);
+		return $out;
 	}
 
 
@@ -749,7 +749,7 @@ class PlgContentSmz_image_gallery extends JPlugin {
 		ob_start();
 		include $layout;
 
-		return(ob_get_clean());
+		return ob_get_clean();
 	}
 
 

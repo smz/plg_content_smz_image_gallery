@@ -171,7 +171,7 @@ class PlgContentSmz_image_gallery extends JPlugin {
 
 	function onContentAfterDisplay($context, &$row, &$params, $page = 0)
 	{
-		// Just return if the autGallery option is not set or the page is not what we want
+		// Just return if the autoGallery option is not set or the page is not what we want
 		if (!$this->options->autoGallery ||
 			!$this->plugin_ready ||
 			$context != 'com_content.article' ||
@@ -183,12 +183,14 @@ class PlgContentSmz_image_gallery extends JPlugin {
 
 		jimport('joomla.filesystem.folder');
 
-		$db = JFactory::getDbo();
-		$query = $db->getQuery(true)
-				-> select("cat.path")
-				-> from("#__categories AS cat")
-				-> where("cat.id='$row->catid'");
-		$category_path = $db->setQuery($query)->loadResult();
+		$categories = JCategories::getInstance('Content');
+		$category = $categories->get($row->catid);
+		$catlist = $category->getPath();
+		foreach ($catlist as $i => $cat)
+		{
+			$catlist[$i] = substr($cat, strpos($cat, ':') + 1);
+		}
+		$category_path = implode('/', $catlist);
 
 		// Build the folder path from the category path + article alias + sub-folder
 		$this->options->galleryFolder =  $category_path . '/' . $row->alias . '/' . $this->options->autoGalleryFolder;

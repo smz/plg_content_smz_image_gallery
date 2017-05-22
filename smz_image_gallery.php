@@ -185,12 +185,12 @@ class PlgContentSmz_image_gallery extends JPlugin {
 
 		$categories = JCategories::getInstance('Content');
 		$category = $categories->get($row->catid);
-		$catlist = $category->getPath();
-		foreach ($catlist as $i => $cat)
+		$catlist = array($category->alias);
+		while (($catname = ($category = $category->getParent())->alias) != 'root')
 		{
-			$catlist[$i] = substr($cat, strpos($cat, ':') + 1);
+			$catlist[] = $catname;
 		}
-		$category_path = implode('/', $catlist);
+		$category_path = implode('/', array_reverse($catlist));
 
 		// Build the folder path from the category path + article alias + sub-folder
 		$this->options->galleryFolder =  $category_path . '/' . $row->alias . '/' . $this->options->autoGalleryFolder;

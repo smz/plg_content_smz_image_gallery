@@ -183,17 +183,18 @@ class PlgContentSmz_image_gallery extends JPlugin {
 
 		jimport('joomla.filesystem.folder');
 
+		// Get the article category path
 		$categories = JCategories::getInstance('Content');
 		$category = $categories->get($row->catid);
-		$catlist = array($category->alias);
-		while (($catname = ($category = $category->getParent())->alias) != 'root')
+		do
 		{
-			$catlist[] = $catname;
-		}
-		$category_path = implode('/', array_reverse($catlist));
+			$catlist[] = $category->alias;
+			$category = $category->getParent();
+		} while ($category->alias != 'root');
+		$categoryPath = implode('/', array_reverse($catlist));
 
 		// Build the folder path from the category path + article alias + sub-folder
-		$this->options->galleryFolder =  $category_path . '/' . $row->alias . '/' . $this->options->autoGalleryFolder;
+		$this->options->galleryFolder =  $categoryPath . '/' . $row->alias . '/' . $this->options->autoGalleryFolder;
 
 		// We MUST return here if the folder does not exist or we would get an error from setOptions()!
 		if (!JFolder::exists(JPATH_SITE . '/' . $this->options->galleries_rootfolder . '/' . $this->options->galleryFolder))

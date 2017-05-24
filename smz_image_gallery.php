@@ -79,6 +79,7 @@ class PlgContentSmz_image_gallery extends JPlugin {
 	private $lexicon;
 	private $gallery = array();
 
+
 	function __construct(&$subject, $params)
 	{
 		// Setup parent class
@@ -240,6 +241,7 @@ class PlgContentSmz_image_gallery extends JPlugin {
 		return $this->renderGallery();
 	}
 
+
 	// onContentPrepare handler
 	function onContentPrepare($context, &$row, &$params, $page = 0)
 	{
@@ -323,9 +325,10 @@ class PlgContentSmz_image_gallery extends JPlugin {
 	}
 
 
-	/* ------------------ Options Parsing Functions ------------------ */
+	/* ------------------ Tag parameters parsing functions ------------------ */
 
 
+	// Parse (and fix) parameters found in the tag (if any)
 	function setOptions($tagcontent)
 	{
 
@@ -504,7 +507,7 @@ class PlgContentSmz_image_gallery extends JPlugin {
 	}
 
 
-	// Parse "command line" options (New style)
+	// Parse parameters from tag (New style)
 	function parseOptions($optionsString)
 	{
 		$out = array();
@@ -554,7 +557,7 @@ class PlgContentSmz_image_gallery extends JPlugin {
 	}
 
 
-	// Parse "command line" options (Old style)
+	// Parse parameters from tag  (Old style)
 	function parseOldOptions($optionsString)
 	{
 		$out = array();
@@ -578,7 +581,7 @@ class PlgContentSmz_image_gallery extends JPlugin {
 	}
 
 
-	/* ------------------ Rendering Function ------------------ */
+	/* ------------------ Rendering functions ------------------ */
 
 
 	// Render the gallery
@@ -846,6 +849,7 @@ class PlgContentSmz_image_gallery extends JPlugin {
 	}
 
 
+	// Get info about each image from its "sidecar file"
 	function getInfoFromSidecar($filename, $key)
 	{
 		$basename = substr($filename, 0, strlen($filename) - strlen(strrchr($filename, '.')));
@@ -924,6 +928,7 @@ class PlgContentSmz_image_gallery extends JPlugin {
 	}
 
 
+	// Get info for all images from the "info file"
 	function getInfoFromInfofile()
 	{
 		$filename = $this->options->galleryFolder . '/' . $this->options->info_file;

@@ -55,45 +55,105 @@ class PlgContentSmz_image_gallery extends JPlugin {
 
 
 	// Class variables
-	private $gallery = array();
-	private $plg_name = 'smz_image_gallery';
-	private $plg_tag = 'gallery';
-	private $masonry_version = '4.0.0';
-	private $cache_filename_length = 12;
-	private $hash_length = 8;
-	private $options;
-	private $cache_folder;
-	private $cache_url;
-	private $app;
-	private $plugin_ready = true;
-	private $lexicon;
-	private $load_masonry;
-	private $memoryLimit;
-	private $galleries_rootfolder;
+	private $pluginName = 'smz_image_gallery';
+	private $pluginTag = 'gallery';
+	private $masonryRev = '4.0.0';
+	private $cacheFilenameLength = 12;
+	private $galleryIdLength = 8;
 	private $syntax = array (
-					'galleryFolder' => array('src', '0'),
-					'thb_width' => array('tw', '1'),
-					'thb_height' => array('th', '2'),
-					'display_mode' => array('dm', 'display', '3'),
-					'caption_mode' => array('4'), // Unused ATM...
-					'use_fancybox' => array('fb', 'fancybox', 'lightbox', '5'),
-					'layout' => array('tp', 'tpl', 'template', 'layout', '6'),
-					'suppress_errors' => array('el', 'errorlevel', '7'),
-					'sort_order' => array('sort', 'order', '8'),
-					'gutter' => array('gutter', 'gt', 'margin', 'mg', '9')
-					);
+		'galleryFolder' => array('src', '0'),
+		'thb_width' => array('tw', '1'),
+		'thb_height' => array('th', '2'),
+		'display_mode' => array('dm', 'display', '3'),
+		'caption_mode' => array('4'), // Unused ATM...
+		'use_fancybox' => array('fb', 'fancybox', 'lightbox', '5'),
+		'layout' => array('tp', 'tpl', 'template', 'layout', '6'),
+		'suppress_errors' => array('el', 'errorlevel', '7'),
+		'sort_order' => array('sort', 'order', '8'),
+		'gutter' => array('gutter', 'gt', 'margin', 'mg', '9')
+		);
+
+	private $bailOut = false;
+	private $options;
+	private $app;
+	private $lexicon;
+	private $gallery = array();
 
 	function __construct(&$subject, $params)
 	{
 		// Setup parent class
 		parent::__construct($subject, $params);
 
+		$this->app = JFactory::getApplication();
+
+		// Do not run in Admin mode
+		if ($this->app->isAdmin())
+		{
+			$this->bailOut = true;
+			return;
+		}
+
 		// Setup the options object
 		$this->options = new stdClass;
 
+		// autoGallery is the only option we need at this time.
+		$this->options->autoGallery = $this->params->get('autoGallery', 0);
+	}
+
+
+	function init()
+	{
+		// Do not continue if something was wrong already
+		if ($this->bailOut)
+		{
+			return;
+		}
+
+		// Load the plugin language file
+		JPlugin::loadLanguage('plg_content_' . $this->pluginName);
+
+		// Bail out if the page format is not what we want
+		if (!in_array($this->app->input->getCmd('format', ''), array('', 'html', 'feed', 'json')))
+		{
+			$this->bailOut = true;
+			return;
+		}
+
+		// Check we can use the gd extension
+		if (!extension_loaded('gd') && !function_exists('gd_info'))
+		{
+			$this->app->enqueueMessage(JText::_('PLG_SMZ_SIG_ERR_NOGD'), 'error');
+			$this->bailOut = true;
+			return;
+		}
+
+		// Set-up the cache folder
+		if (!is_writable(JPATH_SITE . '/cache'))
+		{
+			$this->app->enqueueMessage(JText::_('PLG_SMZ_SIG_ERR_CACHE'), 'error');
+			$this->bailOut = true;
+			return;
+		}
+		$this->cache_folder = JPATH_SITE . '/cache/' . $this->pluginName;
+		$this->cacheURL = JUri::base(true) . '/cache/' . $this->pluginName .'/';
+		if (!file_exists($this->cache_folder))
+		{
+			if (!mkdir($this->cache_folder, 0755))
+			{
+				$this->app->enqueueMessage(JText::_('PLG_SMZ_SIG_ERR_CACHE'), 'error');
+				$this->bailOut = true;
+				return;
+			}
+		}
+		if (!is_writable($this->cache_folder))
+		{
+			$this->app->enqueueMessage(JText::_('PLG_SMZ_SIG_ERR_CACHE'), 'error');
+			$this->bailOut = true;
+			return;
+		}
+
 
 		// Initialize global options
-		$this->options->autoGallery = $this->params->get('autoGallery', 0);
 		$this->options->galleries_rootfolder = trim($this->params->get('galleries_rootfolder', '/images'), " \t\n\r\0\x0B/.\\");
 		$this->options->autoGalleryFolder = trim($this->params->get('autoGalleryFolder', 'gallery'), " \t\n\r\0\x0B/.\\");
 		$this->options->fancybox_grouping = $this->params->get('fancybox_grouping', 'data-fancybox-group');
@@ -109,6 +169,7 @@ class PlgContentSmz_image_gallery extends JPlugin {
 		$this->options->memoryLimit = (int)$this->params->get('memoryLimit', 0);
 		$this->options->recurse = false;
 
+		// Try to honor the memoryLimit option
 		if ($this->options->memoryLimit > 0)
 		{
 			ini_set('memory_limit', $this->options->memoryLimit . 'M');
@@ -122,61 +183,27 @@ class PlgContentSmz_image_gallery extends JPlugin {
 				$this->lexicon[$alias] = $command;
 			}
 		}
-
-		// Initialize class variables
-		$this->cache_folder = JPATH_SITE . '/cache/' . $this->plg_name;
-		$this->cache_url = JUri::base(true) . '/cache/' . $this->plg_name .'/';
-		$this->app = JFactory::getApplication();
-
-		if ($this->app->isAdmin())
-		{
-			$this->plugin_ready = false;
-			return;
-		}
-
-		// Load the plugin language file
-		JPlugin::loadLanguage('plg_content_' . $this->plg_name);
-
-		// Check for basic requirements
-		if (!extension_loaded('gd') && !function_exists('gd_info'))
-		{
-			$this->app->enqueueMessage(JText::_('PLG_SMZ_SIG_ERR_NOGD'), 'error');
-			$this->plugin_ready = false;
-		}
-
-		// Set-up the cache folder
-		if (!is_writable(JPATH_SITE . '/cache'))
-		{
-			$this->app->enqueueMessage(JText::_('PLG_SMZ_SIG_ERR_CACHE'), 'error');
-			$this->plugin_ready = false;
-		}
-
-		if (!file_exists($this->cache_folder))
-		{
-			if (!mkdir($this->cache_folder, 0755))
-			{
-				$this->app->enqueueMessage(JText::_('PLG_SMZ_SIG_ERR_CACHE'), 'error');
-				$this->plugin_ready = false;
-			}
-		}
-
-		if (!is_writable($this->cache_folder))
-		{
-			$this->app->enqueueMessage(JText::_('PLG_SMZ_SIG_ERR_CACHE'), 'error');
-			$this->plugin_ready = false;
-		}
-
 	}
 
 
 	function onContentAfterDisplay($context, &$row, &$params, $page = 0)
 	{
-		// Just return if the autoGallery option is not set or the page is not what we want
+		// Do not continue if something was wrong already
+		if ($this->bailOut)
+		{
+			return;
+		}
+		// Bail out if the autoGallery option is not set or the page is not what we want
 		if (!$this->options->autoGallery ||
-			!$this->plugin_ready ||
 			$context != 'com_content.article' ||
-			!in_array($this->app->input->getCmd('format', ''), array('', 'html', 'feed', 'json')) ||
 			!$row->id > 0)
+		{
+			return;
+		}
+
+		$this->init();
+
+		if ($this->bailOut)
 		{
 			return;
 		}
@@ -216,24 +243,36 @@ class PlgContentSmz_image_gallery extends JPlugin {
 	// onContentPrepare handler
 	function onContentPrepare($context, &$row, &$params, $page = 0)
 	{
-		if (!$this->plugin_ready)
+		// Do not continue if something was wrong already
+		if ($this->bailOut)
+		{
+			return;
+		}
+
+		// Bail out if the page is not what we want
+		if ($context != 'com_content.article' ||
+			!$row->id > 0)
+		{
+			return;
+		}
+		// Simple performant check to determine whether plugin should process further
+		if (JString::strpos($row->text, $this->pluginTag) === false)
+		{
+			return;
+		}
+
+
+		$this->init();
+
+		if ($this->bailOut)
 		{
 			return;
 		}
 
 		jimport('joomla.filesystem.folder');
 
-		$document  = JFactory::getDocument();
-
-		// Bail out if the page format is not what we want
-		$allowedFormats = array('', 'html', 'feed', 'json');
-		if (!in_array($this->app->input->getCmd('format', ''), $allowedFormats)) return;
-
-		// Simple performant check to determine whether plugin should process further
-		if (JString::strpos($row->text, $this->plg_tag) === false) return;
-
 		// expression to search for
-		$regex = "#{" . $this->plg_tag . "}(.*?){/" . $this->plg_tag . "}#is";
+		$regex = "#{" . $this->pluginTag . "}(.*?){/" . $this->pluginTag . "}#is";
 
 		// Find all instances of the plugin and put them in $matches
 		preg_match_all($regex, $row->text, $matches);
@@ -275,7 +314,7 @@ class PlgContentSmz_image_gallery extends JPlugin {
 				$plg_html = $this->renderGallery();
 
 				// Do the replace
-				$row->text = preg_replace('#{' . $this->plg_tag . '}' . str_replace('\\', '\\\\', $tagcontent) . '{/' . $this->plg_tag . '}#s', $plg_html, $row->text);
+				$row->text = preg_replace('#{' . $this->pluginTag . '}' . str_replace('\\', '\\\\', $tagcontent) . '{/' . $this->pluginTag . '}#s', $plg_html, $row->text);
 
 				// Unset the gallery
 				unset($this->gallery);
@@ -357,7 +396,7 @@ class PlgContentSmz_image_gallery extends JPlugin {
 		}
 
 		// Set the gallery ID from the source folder hash
-		$this->gallery_id = substr(md5($this->options->galleryFolder), 0, $this->hash_length);
+		$this->gallery_id = substr(md5($this->options->galleryFolder), 0, $this->galleryIdLength);
 
 
 		// thb_width
@@ -466,11 +505,11 @@ class PlgContentSmz_image_gallery extends JPlugin {
 
 
 	// Parse "command line" options (New style)
-	function parseOptions($options_string)
+	function parseOptions($optionsString)
 	{
 		$out = array();
 
-		$options = explode(',', $options_string);			// Explodes options string into an array of "param=value" strings
+		$options = explode(',', $optionsString);			// Explodes options string into an array of "param=value" strings
 		foreach ($options as $param_pair) 					// Then for each of them...
 		{
 			$pair = explode('=', $param_pair); 				// Explode into an (param, value) array
@@ -516,11 +555,11 @@ class PlgContentSmz_image_gallery extends JPlugin {
 
 
 	// Parse "command line" options (Old style)
-	function parseOldOptions($options_string)
+	function parseOldOptions($optionsString)
 	{
 		$out = array();
 
-		$values = explode(':', $options_string);			// The old way...
+		$values = explode(':', $optionsString);			// The old way...
 
 		for ($i=0; $i<10; $i++)
 		{
@@ -598,7 +637,7 @@ class PlgContentSmz_image_gallery extends JPlugin {
 			$original = substr($filename,strlen($sitePath));
 
 			// Unique cache file name for every thumbnail at every size. Thumbnails are always JPEG images.
-			$thumbfilename = substr(md5($original . 'w' . $this->options->thb_width . 'h' . $this->options->thb_height), 0, $this->cache_filename_length) . '.jpg';
+			$thumbfilename = substr(md5($original . 'w' . $this->options->thb_width . 'h' . $this->options->thb_height), 0, $this->cacheFilenameLength) . '.jpg';
 
 			// Check if thumb image exists already and is current
 			$thumbfile = $this->cache_folder . '/' . $thumbfilename;
@@ -697,7 +736,7 @@ class PlgContentSmz_image_gallery extends JPlugin {
 			// Assemble the image elements
 			$this->gallery[$key]->filename = $filename;
 			$this->gallery[$key]->sourceImageURL = '/' . str_replace(array(' ', '\\'), array('%20', '/'), $original);
-			$this->gallery[$key]->thumbImageURL = $this->cache_url . $thumbfilename;
+			$this->gallery[$key]->thumbImageURL = $this->cacheURL . $thumbfilename;
 			$this->gallery[$key]->width = $thumb_width;
 			$this->gallery[$key]->height = $thumb_height;
 			$this->gallery[$key]->title = htmlentities($title, ENT_QUOTES);
@@ -726,21 +765,21 @@ class PlgContentSmz_image_gallery extends JPlugin {
 			if ($this->options->load_masonry && $this->options->display_mode == 2)
 			{
 				JHtml::_('jquery.framework');
-				JHtml::script("plg_smz_image_gallery/masonry.{$this->masonry_version}.min.js", false, true, false );
+				JHtml::script("plg_smz_image_gallery/masonry.{$this->masonryRev}.min.js", false, true, false );
 				$this->options->load_masonry = false; // we want to load it just once
 			}
 		}
 
 		// Get the layout template
 		$template = $this->app->getTemplate();
-		$overridden_layout = JPATH_SITE . "/templates/{$template}/html/{$this->plg_name}/{$this->options->layout}.php";
+		$overridden_layout = JPATH_SITE . "/templates/{$template}/html/{$this->pluginName}/{$this->options->layout}.php";
 		if (file_exists($overridden_layout))
 		{
 			$layout = $overridden_layout;
 		}
 		else
 		{
-			$layout = JPATH_SITE . "/plugins/content/{$this->plg_name}/tmpl/{$this->options->layout}.php";
+			$layout = JPATH_SITE . "/plugins/content/{$this->pluginName}/tmpl/{$this->options->layout}.php";
 		}
 
 		// Here we go...
@@ -855,7 +894,7 @@ class PlgContentSmz_image_gallery extends JPlugin {
 					}
 					else
 					{
-						$attribute = 'sigInfo-' . substr(md5($tag), 0, $this->hash_length);
+						$attribute = 'sigInfo-' . substr(md5($tag), 0, $this->galleryIdLength);
 						$this->gallery[$key]->info->$attribute = new stdClass();
 						$this->gallery[$key]->info->$attribute->for_thumbs = true;
 						$this->gallery[$key]->info->$attribute->for_lightbox = true;
@@ -947,7 +986,7 @@ class PlgContentSmz_image_gallery extends JPlugin {
 							}
 							else
 							{
-								$attribute = 'sigInfo-' . substr(md5($tag), 0, $this->hash_length);
+								$attribute = 'sigInfo-' . substr(md5($tag), 0, $this->galleryIdLength);
 								$image->info->$attribute = new stdClass();
 								switch (mb_substr($tag, 0, 1))
 								{

@@ -2,9 +2,9 @@
 /**
  * @package		SMZ Image Gallery (plugin)
  * @author		Sergio Manzi - http://smz.it
- * @copyright	Copyright (c) 2013 - 2016 Sergio Manzi. All rights reserved.
+ * @copyright	Copyright (c) 2013 - 2017 Sergio Manzi. All rights reserved.
  * @license		GNU General Public License version 3 or (at your option) any later version.
- * @version		3.6.0
+ * @version		3.7.2
  */
 
 defined('_JEXEC') or die;
@@ -57,7 +57,6 @@ class PlgContentSmz_image_gallery extends JPlugin {
 	// Class variables
 	private $pluginName = 'smz_image_gallery';
 	private $pluginTag = 'gallery';
-	private $masonryRev = '4.0.0';
 	private $cacheFilenameLength = 12;
 	private $galleryIdLength = 8;
 	private $syntax = array (
@@ -73,11 +72,11 @@ class PlgContentSmz_image_gallery extends JPlugin {
 		'gutter' => array('gutter', 'gt', 'margin', 'mg', '9')
 		);
 
-	private $bailOut = false;
 	private $options;
 	private $app;
 	private $lexicon;
 	private $gallery = array();
+
 
 	function __construct(&$subject, $params)
 	{
@@ -89,7 +88,6 @@ class PlgContentSmz_image_gallery extends JPlugin {
 		// Do not run in Admin mode
 		if ($this->app->isAdmin())
 		{
-			$this->bailOut = true;
 			return;
 		}
 
@@ -103,36 +101,27 @@ class PlgContentSmz_image_gallery extends JPlugin {
 
 	function init()
 	{
-		// Do not continue if something was wrong already
-		if ($this->bailOut)
-		{
-			return;
-		}
-
 		// Load the plugin language file
 		JPlugin::loadLanguage('plg_content_' . $this->pluginName);
 
 		// Bail out if the page format is not what we want
 		if (!in_array($this->app->input->getCmd('format', ''), array('', 'html', 'feed', 'json')))
 		{
-			$this->bailOut = true;
-			return;
+			return false;
 		}
 
 		// Check we can use the gd extension
 		if (!extension_loaded('gd') && !function_exists('gd_info'))
 		{
 			$this->app->enqueueMessage(JText::_('PLG_SMZ_SIG_ERR_NOGD'), 'error');
-			$this->bailOut = true;
-			return;
+			return false;
 		}
 
 		// Set-up the cache folder
 		if (!is_writable(JPATH_SITE . '/cache'))
 		{
 			$this->app->enqueueMessage(JText::_('PLG_SMZ_SIG_ERR_CACHE'), 'error');
-			$this->bailOut = true;
-			return;
+			return false;
 		}
 		$this->cache_folder = JPATH_SITE . '/cache/' . $this->pluginName;
 		$this->cacheURL = JUri::base(true) . '/cache/' . $this->pluginName .'/';
@@ -141,15 +130,13 @@ class PlgContentSmz_image_gallery extends JPlugin {
 			if (!mkdir($this->cache_folder, 0755))
 			{
 				$this->app->enqueueMessage(JText::_('PLG_SMZ_SIG_ERR_CACHE'), 'error');
-				$this->bailOut = true;
-				return;
+				return false;
 			}
 		}
 		if (!is_writable($this->cache_folder))
 		{
 			$this->app->enqueueMessage(JText::_('PLG_SMZ_SIG_ERR_CACHE'), 'error');
-			$this->bailOut = true;
-			return;
+			return false;
 		}
 
 
@@ -183,16 +170,19 @@ class PlgContentSmz_image_gallery extends JPlugin {
 				$this->lexicon[$alias] = $command;
 			}
 		}
+
+		return true;
 	}
 
 
 	function onContentAfterDisplay($context, &$row, &$params, $page = 0)
 	{
-		// Do not continue if something was wrong already
-		if ($this->bailOut)
+		// Do not run in Admin mode
+		if ($this->app->isAdmin())
 		{
 			return;
 		}
+
 		// Bail out if the autoGallery option is not set or the page is not what we want
 		if (!$this->options->autoGallery ||
 			$context != 'com_content.article' ||
@@ -201,14 +191,11 @@ class PlgContentSmz_image_gallery extends JPlugin {
 			return;
 		}
 
-		$this->init();
-
-		if ($this->bailOut)
+		// Initialize the plugin, bail out if there were errors
+		if (!$this->init())
 		{
 			return;
 		}
-
-		jimport('joomla.filesystem.folder');
 
 		// Get the article category path
 		$categories = JCategories::getInstance('Content');
@@ -223,12 +210,16 @@ class PlgContentSmz_image_gallery extends JPlugin {
 		// Build the folder path from the category path + article alias + sub-folder
 		$this->options->galleryFolder =  $categoryPath . '/' . $row->alias . '/' . $this->options->autoGalleryFolder;
 
-		// We MUST return here if the folder does not exist or we would get an error from setOptions()!
+		// This doesn't seems do be needed any more. Remove?
+		jimport('joomla.filesystem.folder');
+
+		// Return early here if the folder does not exist
 		if (!JFolder::exists(JPATH_SITE . '/' . $this->options->galleries_rootfolder . '/' . $this->options->galleryFolder))
 		{
 			return;
 		}
 
+		// Build the gallery
 		$this->buildGallery('');
 
 		// Nothing in this gallery, just return
@@ -237,14 +228,16 @@ class PlgContentSmz_image_gallery extends JPlugin {
 			return;
 		}
 
+		// Render the gallery and return
 		return $this->renderGallery();
 	}
+
 
 	// onContentPrepare handler
 	function onContentPrepare($context, &$row, &$params, $page = 0)
 	{
-		// Do not continue if something was wrong already
-		if ($this->bailOut)
+		// Do not run in Admin mode
+		if ($this->app->isAdmin())
 		{
 			return;
 		}
@@ -255,39 +248,29 @@ class PlgContentSmz_image_gallery extends JPlugin {
 		{
 			return;
 		}
-		// Simple performant check to determine whether plugin should process further
+
+		// Simple performant check to determine whether there is any tag and the plugin should process further
 		if (JString::strpos($row->text, $this->pluginTag) === false)
 		{
 			return;
 		}
 
-
-		$this->init();
-
-		if ($this->bailOut)
+		// Initialize the plugin, bail out if there were errors
+		if (!$this->init())
 		{
 			return;
 		}
 
-		jimport('joomla.filesystem.folder');
-
-		// expression to search for
+		// Expression to search for tags
 		$regex = "#{" . $this->pluginTag . "}(.*?){/" . $this->pluginTag . "}#is";
 
 		// Find all instances of the plugin and put them in $matches
 		preg_match_all($regex, $row->text, $matches);
 
-		// Number of plugins
-		$count = count($matches[0]);
-
-		// Plugin only processes if there are any instances of the plugin in the text
-		if (!$count) return;
-
-
-		// When used with K2 extra fields
-		if (!isset($row->title))
+		// Plugin only processes if there are any instances of the plugin tag in the text
+		if (!count($matches[0]))
 		{
-			$row->title = '';
+			return;
 		}
 
 		// Process plugin tags
@@ -323,9 +306,10 @@ class PlgContentSmz_image_gallery extends JPlugin {
 	}
 
 
-	/* ------------------ Options Parsing Functions ------------------ */
+	/* ------------------ Tag parameters parsing functions ------------------ */
 
 
+	// Parse (and fix) parameters found in the tag (if any)
 	function setOptions($tagcontent)
 	{
 
@@ -346,9 +330,6 @@ class PlgContentSmz_image_gallery extends JPlugin {
 		$this->pageURL = false;
 		$this->masonry_options = '';
 
-		// We are optimists
-		$ok = true;
-
 		$tagcontent = trim($tagcontent);
 
 		// Get parameters from the plugin tag string
@@ -361,11 +342,11 @@ class PlgContentSmz_image_gallery extends JPlugin {
 			}
 			elseif (strpos($tagcontent,'=') !== false)  // New style (param=value)
 			{
-				$this->parseOptions($tagcontent, $this->lexicon);
+				$this->parseOptions($tagcontent);
 			}
 			else	// Old style (param0:param1:param2:...)
 			{
-				$this->parseOldOptions($tagcontent, $this->lexicon);
+				$this->parseOldOptions($tagcontent);
 			}
 		}
 
@@ -392,7 +373,7 @@ class PlgContentSmz_image_gallery extends JPlugin {
 			{
 				$this->app->enqueueMessage(JText::sprintf('PLG_SMZ_SIG_ERR_GALLERY_FOLDER', $this->options->galleryFolder), 'error');
 			}
-			$ok = false;
+			return false;
 		}
 
 		// Set the gallery ID from the source folder hash
@@ -420,11 +401,11 @@ class PlgContentSmz_image_gallery extends JPlugin {
 				$this->options->display_mode = 2;
 				$this->options->margin_right = 0;
 				$this->options->margin_bottom = $this->options->gutter;
-				$this->masonry_options = " data-masonry='{\"itemSelector\":\".sigCell\", \"gutter\":{$this->options->gutter}}'";
+				$this->masonry_options = " data-masonry='{\"itemSelector\":\".sigCell\", \"gutter\":{$this->options->gutter}, \"horizontalOrder\":true}'";
 				break;
 			default:
 				$this->app->enqueueMessage(JText::sprintf('PLG_SMZ_SIG_ERR_DISPLAY_MODE', $this->options->display_mode), 'error');
-				$ok = false;
+				return false;
 		}
 
 		// use_fancybox
@@ -461,7 +442,7 @@ class PlgContentSmz_image_gallery extends JPlugin {
 				if ($this->options->display_mode == 2)
 				{
 					$this->app->enqueueMessage(JText::_('PLG_SMZ_SIG_ERR_SIMPLE_AND_MASONRY'), 'error');
-					$ok = false;
+					return false;
 				}
 				break;
 			default:
@@ -479,7 +460,7 @@ class PlgContentSmz_image_gallery extends JPlugin {
 				break;
 			default:
 				$this->app->enqueueMessage(JText::sprintf('PLG_SMZ_SIG_ERR_SUPPRESS_ERRORS', $this->options->suppress_errors), 'error');
-				$ok = false;
+				return false;
 		}
 
 		// sort_order
@@ -494,22 +475,22 @@ class PlgContentSmz_image_gallery extends JPlugin {
 				break;
 			default:
 				$this->app->enqueueMessage(JText::sprintf('PLG_SMZ_SIG_ERR_SORT_ORDER', $this->options->sort_order), 'error');
-				$ok = false;
+				return false;
 		}
 
 		// Message to show when printing an article/item with a gallery
 		$this->pageURL = JUri::GetInstance()->toString();
 
-		return $ok;
+		return true;
 	}
 
 
-	// Parse "command line" options (New style)
-	function parseOptions($optionsString)
+	// Parse parameters from tag (New style)
+	function parseOptions($tagcontent)
 	{
 		$out = array();
 
-		$options = explode(',', $optionsString);			// Explodes options string into an array of "param=value" strings
+		$options = explode(',', $tagcontent);			// Explodes options string into an array of "param=value" strings
 		foreach ($options as $param_pair) 					// Then for each of them...
 		{
 			$pair = explode('=', $param_pair); 				// Explode into an (param, value) array
@@ -554,12 +535,12 @@ class PlgContentSmz_image_gallery extends JPlugin {
 	}
 
 
-	// Parse "command line" options (Old style)
-	function parseOldOptions($optionsString)
+	// Parse parameters from tag  (Old style)
+	function parseOldOptions($tagcontent)
 	{
 		$out = array();
 
-		$values = explode(':', $optionsString);			// The old way...
+		$values = explode(':', $tagcontent);			// The old way...
 
 		for ($i=0; $i<10; $i++)
 		{
@@ -578,7 +559,7 @@ class PlgContentSmz_image_gallery extends JPlugin {
 	}
 
 
-	/* ------------------ Rendering Function ------------------ */
+	/* ------------------ Rendering functions ------------------ */
 
 
 	// Render the gallery
@@ -590,6 +571,7 @@ class PlgContentSmz_image_gallery extends JPlugin {
 			return;
 		}
 
+		// This doesn't seems do be needed any more. Remove?
 		jimport('joomla.filesystem.folder');
 
 		// Path assignment
@@ -598,7 +580,10 @@ class PlgContentSmz_image_gallery extends JPlugin {
 		$srcFolder = JFolder::files($sitePath . $this->options->galleryFolder, '.', $this->options->recurse, true);
 
 		// Proceed if the folder is OK or fail silently
-		if (!$srcFolder) return;
+		if (!$srcFolder)
+		{
+			return;
+		}
 
 		// Array of valid file types
 		$fileTypes = array('jpg', 'jpeg', 'gif', 'png');
@@ -714,7 +699,10 @@ class PlgContentSmz_image_gallery extends JPlugin {
 				$success = imagejpeg($thumb, $thumbfile, $this->options->jpg_quality);
 
 				// Bail out if there is a problem in the GD conversion
-				if (!$success) return;
+				if (!$success)
+				{
+					return;
+				}
 
 				// remove the image resources from memory
 				imagedestroy($source);
@@ -765,7 +753,7 @@ class PlgContentSmz_image_gallery extends JPlugin {
 			if ($this->options->load_masonry && $this->options->display_mode == 2)
 			{
 				JHtml::_('jquery.framework');
-				JHtml::script("plg_smz_image_gallery/masonry.{$this->masonryRev}.min.js", false, true, false );
+				JHtml::script("plg_smz_image_gallery/masonry.pkgd.min.js", false, true, false );
 				$this->options->load_masonry = false; // we want to load it just once
 			}
 		}
@@ -846,6 +834,7 @@ class PlgContentSmz_image_gallery extends JPlugin {
 	}
 
 
+	// Get info about each image from its "sidecar file"
 	function getInfoFromSidecar($filename, $key)
 	{
 		$basename = substr($filename, 0, strlen($filename) - strlen(strrchr($filename, '.')));
@@ -924,6 +913,7 @@ class PlgContentSmz_image_gallery extends JPlugin {
 	}
 
 
+	// Get info for all images from the "info file"
 	function getInfoFromInfofile()
 	{
 		$filename = $this->options->galleryFolder . '/' . $this->options->info_file;

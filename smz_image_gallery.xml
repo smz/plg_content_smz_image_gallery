@@ -7,7 +7,7 @@
 	<license>GNU General Public License version 3 or (at your option) any later version.</license>
 	<name>PLG_CONTENT_SMZ_SIG</name>
 	<description>PLG_CONTENT_SMZ_SIG_DESC</description>
-	<version>3.7.2</version>
+	<version>3.8.0</version>
 	<creationDate>May 2017</creationDate>
 	<files folder="plugin" destination="smz_image_gallery">
 		<filename plugin="smz_image_gallery">smz_image_gallery.php</filename>
@@ -46,10 +46,17 @@
 					<option value="A">PLG_SMZ_SIG_ASCENDING</option>
 					<option value="D">PLG_SMZ_SIG_DESCENDING</option>
 				</field>
-				<field name="use_fancybox" type="radio" class="btn-group" default="1" label="PLG_SMZ_SIG_USE_FANCYBOX" description="PLG_SMZ_SIG_USE_FANCYBOX_DESC">
+				<field name="use_fancybox" type="radio" class="btn-group" default="1" label="PLG_SMZ_SIG_USELIGHTBOX" description="PLG_SMZ_SIG_USELIGHTBOX_DESC">
 					<option value="1">JYES</option>
 					<option value="0">JNO</option>
 				</field>
+				<field name="lightboxVersion" type="list" default="FANCYBOX21" label="PLG_SMZ_SIG_LIGHTBOXVERSION" description="PLG_SMZ_SIG_LIGHTBOXVERSION_DESC">
+					<option value="FANCYBOX21">PLG_SMZ_SIG_FANCYBOX21</option>
+					<option value="FANCYBOX30">PLG_SMZ_SIG_FANCYBOX30</option>
+					<option value="CUSTOM">PLG_SMZ_SIG_CUSTOMLIGHT</option>
+				</field>
+				<field name="fancybox_class" showon="lightboxVersion:CUSTOM" type="text" default="" label="PLG_SMZ_SIG_LIGHTBOXCLASS" description="PLG_SMZ_SIG_LIGHTBOXCLASS_DESC" />
+				<field name="fancybox_grouping" showon="lightboxVersion:CUSTOM" type="text" default="" label="PLG_SMZ_SIG_LIGHTBOXGROUPING" description="PLG_SMZ_SIG_LIGHTBOXGROUPING_DESC" />
 			</fieldset>
 			<fieldset name="advanced">
 				<field name="galleries_rootfolder" type="text" default="/images" label="PLG_SMZ_SIG_ROOTFOLDER" description="PLG_SMZ_SIG_ROOTFOLDER_DESC" />
@@ -64,10 +71,6 @@
 				<field name="thumbs_only_field_flag" maxlength="1" type="text" default="#" label="PLG_SMZ_SIG_THUMBS_ONLY_FIELD_FLAG" description="PLG_SMZ_SIG_THUMBS_ONLY_FIELD_FLAG_DESC" />
 				<field name="lightbox_only_field_flag" maxlength="1" type="text" default="@" label="PLG_SMZ_SIG_LIGHTBOX_ONLY_FIELD_FLAG" description="PLG_SMZ_SIG_LIGHTBOX_ONLY_FIELD_FLAG_DESC" />
 				<field name="jpg_quality" type="text" default="80" label="PLG_SMZ_SIG_TQ" description="PLG_SMZ_SIG_TQ_DESC" />
-				<field name="fancybox_grouping" type="list" default="data-fancybox-group" label="PLG_SMZ_SIG_FANCYBOX_GROUPING" description="PLG_SMZ_SIG_FANCYBOX_GROUPING_DESC">
-					<option value="data-fancybox-group">PLG_SMZ_SIG_DATAFANCYBOXGROUP</option>
-					<option value="rel">PLG_SMZ_SIG_REL</option>
-				</field>
 				<field name="memoryLimit" type="text" default="0" label="PLG_SMZ_SIG_ML" description="PLG_SMZ_SIG_ML_DESC" />
 				<field name="cache_time" type="text" default="0" label="PLG_SMZ_SIG_CACHE_TIME" description="PLG_SMZ_SIG_CACHE_TIME_DESC" />
 				<field name="suppress_errors" type="list" class="btn-group" default="0" label="PLG_SMZ_SIG_SUPPRESS_ERRORS" description="PLG_SMZ_SIG_SUPPRESS_ERRORS_DESC">

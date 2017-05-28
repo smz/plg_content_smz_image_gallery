@@ -4,7 +4,7 @@
  * @author		Sergio Manzi - http://smz.it
  * @copyright	Copyright (c) 2013 - 2017 Sergio Manzi. All rights reserved.
  * @license		GNU General Public License version 3 or (at your option) any later version.
- * @version		3.7.2
+ * @version		3.8.0
  */
 
 defined('_JEXEC') or die;
@@ -31,8 +31,8 @@ class PlgContentSmz_image_gallery extends JPlugin {
 	//
 	//		fb=			5: popup_engine (lightbox):
 	//		fancybox=		0 or none = no lightbox,
-	//		lightbox=		1 or jquery_fancybox = use Fancybox with images grouped by gallery id
-	//							any other string = use Fancybox, with images grouped by that string
+	//		lightbox=		1 or jquery_fancybox = use fancyBox with images grouped by gallery id
+	//							any other string = use fancyBox, with images grouped by that string
 	//
 	//		tp=			6: gallery_layout:
 	//		tpl=				classic ("Polaroid" style) or,
@@ -143,7 +143,7 @@ class PlgContentSmz_image_gallery extends JPlugin {
 		// Initialize global options
 		$this->options->galleries_rootfolder = trim($this->params->get('galleries_rootfolder', '/images'), " \t\n\r\0\x0B/.\\");
 		$this->options->autoGalleryFolder = trim($this->params->get('autoGalleryFolder', 'gallery'), " \t\n\r\0\x0B/.\\");
-		$this->options->fancybox_grouping = $this->params->get('fancybox_grouping', 'data-fancybox-group');
+		$this->options->lightboxVersion = $this->params->get('lightboxVersion', 'FANCYBOX21');
 		$this->options->load_masonry = $this->params->get('load_masonry', 1);
 		$this->options->info_file = trim($this->params->get('info_file', 'titles.txt')," \t\n\r\0\x0B/.\\");
 		$this->options->sidecar_files_extension = '.' . trim($this->params->get('sidecar_files_extension', 'txt')," \t\n\r\0\x0B/.");
@@ -155,6 +155,33 @@ class PlgContentSmz_image_gallery extends JPlugin {
 		$this->options->jpg_quality = (int)$this->params->get('jpg_quality', 80);
 		$this->options->memoryLimit = (int)$this->params->get('memoryLimit', 0);
 		$this->options->recurse = false;
+
+		// Setup Lightbox options
+		$this->options->fancybox_class = '';
+		$this->options->fancybox_grouping = 'data-lightbox-group';
+		switch ($this->options->lightboxVersion)
+		{
+			case 'FANCYBOX21';
+				$this->options->fancybox_grouping = 'data-fancybox-group';
+				$this->options->fancybox_class = ' fancybox';
+				break;
+			case 'FANCYBOX30':
+				$this->options->fancybox_grouping = 'data-fancybox';
+				$this->options->fancybox_class = '';
+				break;
+			case 'CUSTOM':
+				$this->options->fancybox_grouping = trim($this->params->get('fancybox_grouping', ''));
+				if ($this->options->fancybox_grouping == '')
+				{
+					$this->options->fancybox_grouping = 'data-lightbox-group';
+				}
+				$this->options->fancybox_class = trim($this->params->get('fancybox_class', ''));
+				if ($this->options->fancybox_class != '')
+				{
+					$this->options->fancybox_class = ' ' . $this->options->fancybox_class;
+				}
+				break;
+		}
 
 		// Try to honor the memoryLimit option
 		if ($this->options->memoryLimit > 0)
@@ -416,7 +443,7 @@ class PlgContentSmz_image_gallery extends JPlugin {
 			case 'yes';
 			case 'true';
 				$this->options->fancybox_group = 'sig-' . $this->gallery_id;
-				$this->options->lightbox = ' fancybox';
+				$this->options->lightbox = $this->options->fancybox_class;
 				$this->options->use_fancybox = true;
 				break;
 			case 'none':
@@ -428,7 +455,7 @@ class PlgContentSmz_image_gallery extends JPlugin {
 				break;
 			default:
 				$this->options->fancybox_group = htmlspecialchars($this->options->use_fancybox, ENT_QUOTES | ENT_HTML5);
-				$this->options->lightbox = ' fancybox';
+				$this->options->lightbox = $this->options->fancybox_class;
 				$this->options->use_fancybox = true;
 		}
 

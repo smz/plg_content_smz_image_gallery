@@ -4,7 +4,7 @@
  * @author		Sergio Manzi - http://smz.it
  * @copyright	Copyright (c) 2013 - 2017 Sergio Manzi. All rights reserved.
  * @license		GNU General Public License version 3 or (at your option) any later version.
- * @version		3.8.0
+ * @version		3.8.1
  */
 
 defined('_JEXEC') or die;
@@ -883,7 +883,7 @@ class PlgContentSmz_image_gallery extends JPlugin {
 		}
 		if ($handle === false)
 		{
-			$handle = @fopen($filename . lang2 . $this->options->sidecar_files_extension, 'r');
+			$handle = @fopen($filename . $lang2 . $this->options->sidecar_files_extension, 'r');
 		}
 		if ($handle === false)
 		{

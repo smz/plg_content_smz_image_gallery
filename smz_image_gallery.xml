@@ -7,8 +7,8 @@
 	<license>GNU General Public License version 3 or (at your option) any later version.</license>
 	<name>PLG_SMZ_SIG</name>
 	<description>PLG_SMZ_SIG_DESC</description>
-	<version>3.8.0</version>
-	<creationDate>May 2017</creationDate>
+	<version>3.8.1</version>
+	<creationDate>September 2022</creationDate>
 	<files folder="plugin" destination="smz_image_gallery">
 		<filename plugin="smz_image_gallery">smz_image_gallery.php</filename>
 		<folder>language</folder>
